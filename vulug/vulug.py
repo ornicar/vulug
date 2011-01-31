@@ -36,8 +36,8 @@ class Twitter(object):
 class Renderer(object):
 
     def render_tweet(self, tweet):
-        print '\n' + tweet.author.screen_name
-        print '\n' + tweet.text
+        print '\n' + tweet.author.screen_name.encode('utf8')
+        print '\n' + tweet.text.encode('utf8')
         print '\n' + '------------------------------'
 
 twitter = Twitter(Config())
