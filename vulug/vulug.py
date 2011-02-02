@@ -1,47 +1,60 @@
 #!/usr/bin/python
-import os
+# -*- coding: utf-8 -*-
+
+from config import Config
+from twitter import Twitter, TwitterAuthenticationError, TwitterMock
+from view import View
+from gui import Curses
 import curses
-import tweepy
 
-class Config(object):
+class VulugStopError(Exception):
+    pass
 
-    def __init__(self):
-        self.token_file = os.getenv('HOME') + '/.vulugtoken'
-        self.consumer_token = "EhwAZOq7z4FYGMK0aiDNg"
-        self.consumer_secret = "1RiNS0idivgDO8YOW6lLRR72QQkDfOAaqVjtjaPmI"
+class Vulug(object):
 
-class Twitter(object):
+    mock = False
 
     def __init__(self, config):
-        self.authenticate(config)
-
-    def get_timeline(self):
-        return self.api.home_timeline()
-
-    def authenticate(self, config):
-        print "Trying to authenticate to twitter API..."
-        auth = tweepy.OAuthHandler(config.consumer_token, config.consumer_secret)
+        self.twitter = TwitterMock(config) if self.mock else Twitter(config)
+        self.config = config
+        print("Authentication with Twitter API...")
         try:
-            with open(config.token_file, 'r') as token_resource:
-                token = token_resource.readlines()
-                auth.set_access_token(token[0].rstrip('\n'), token[1])
-        except (IOError, tweepy.TweepError):
-            print("Go and bring me back the PIN: %s" % auth.get_authorization_url())
-            auth.get_access_token(raw_input('PIN:'))
-            token_string = auth.access_token.key + '\n' + auth.access_token.secret
-            with open(config.token_file, 'w') as token_resource:
-                token_resource.write(token_string)
-        self.api = tweepy.API(auth)
+            self.twitter.authenticate_from_cache()
+        except TwitterAuthenticationError:
+            print("Go and bring me back the PIN: %s" % self.twitter.get_authorization_url())
+            try:
+                self.twitter.authenticate_from_token(raw_input('PIN:'))
+                print("Success!")
+            except TwitterAuthenticationError:
+                print("Authentication failed. Bye.")
+                raise VulugStopError
 
-class Renderer(object):
+    def start(self, screen):
+        gui = Curses(screen, self.config)
+        self.view = View(gui, self.config)
+        self.home()
 
-    def render_tweet(self, tweet):
-        print '\n' + tweet.author.screen_name.encode('utf8')
-        print '\n' + tweet.text.encode('utf8')
-        print '\n' + '------------------------------'
+    def home(self):
+        self.view.home(self.twitter.get_timeline())
+        self.wait()
 
-twitter = Twitter(Config())
-renderer = Renderer()
+    def wait(self):
+        key = self.view.get_key()
+        if key == ord('j'):
+            self.view.timeline.scroll(1)
+        if key == ord('k'):
+            self.view.timeline.scroll(-1)
+        if key == ord('g'):
+            self.view.timeline.scrollTop()
+        if key == ord('r'):
+            self.home()
+        if key != ord('q'):
+            self.wait()
 
-for tweet in twitter.get_timeline():
-    renderer.render_tweet(tweet)
+if __name__ == "__main__":
+    config = Config()
+    try:
+        vulug = Vulug(config)
+        curses.wrapper(vulug.start)
+    except VulugStopError:
+        pass
