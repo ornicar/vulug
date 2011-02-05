@@ -3,8 +3,8 @@
 
 from config import Config
 from twitter import Twitter, TwitterAuthenticationError, TwitterMock
-from view import View
-from gui import Curses
+from vulug.view.ui import Ui
+from term import Term
 import curses
 
 class VulugStopError(Exception):
@@ -30,26 +30,37 @@ class Vulug(object):
                 raise VulugStopError
 
     def start(self, screen):
-        gui = Curses(screen, self.config)
-        self.view = View(gui, self.config)
+        term = Term(screen, self.config)
+        self.ui = Ui(term, self.config)
         self.home()
+        while True:
+            try:
+                self.handle_key()
+            except KeyboardInterrupt:
+                break
 
-    def home(self):
-        self.view.home(self.twitter.get_timeline())
-        self.wait()
-
-    def wait(self):
+    def handle_key(self):
         key = self.view.get_key()
         if key == ord('j'):
             self.view.timeline.scroll(1)
-        if key == ord('k'):
+            if self.view.timeline.is_scroll_near_to_end():
+                self.more()
+        elif key == ord('k'):
             self.view.timeline.scroll(-1)
-        if key == ord('g'):
-            self.view.timeline.scrollTop()
-        if key == ord('r'):
+        elif key == ord('g'):
+            self.view.timeline.scroll_top()
+        elif key == ord('r'):
             self.home()
-        if key != ord('q'):
-            self.wait()
+        elif key == ord('q'):
+            raise KeyboardInterrupt()
+
+    def home(self):
+        self.view.wait()
+        self.view.home(self.twitter.get_timeline())
+
+    def more(self):
+        self.view.wait()
+        self.view.more(self.twitter.more_timeline())
 
 if __name__ == "__main__":
     config = Config()

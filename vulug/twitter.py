@@ -3,6 +3,7 @@
 
 import tweepy
 import random
+from datetime import datetime
 
 class TwitterAuthenticationError(Exception):
     pass
@@ -12,9 +13,15 @@ class Twitter(object):
     def __init__(self, config):
         self.config = config
         self.auth = tweepy.OAuthHandler(self.config.consumer_token, self.config.consumer_secret)
+        self.page = 1
 
     def get_timeline(self):
-        return tweepy.Cursor(self.api.home_timeline).items(30)
+        self.page = 1
+        return self.api.home_timeline(page=self.page)
+
+    def more_timeline(self):
+        self.page += 1
+        return self.api.home_timeline(page=self.page)
 
     def authenticate_from_cache(self):
         try:
@@ -51,8 +58,10 @@ class TwitterMock(object):
         usernames = ['cat', 'window', 'defenestrate', 'AuDiableVauvert', 'github']
         texts = ["This account references all Linux users. Just follow @iuselinux to get listed.", "KDE SC 4.6 to [extra]: Andrea Scarpino wrote: KDE announced the availability of its Software Compilation 4.6. Yo... http://bit.ly/fv2g76", '"You autocomplete me."', u"@n1k0 Huhu ! J'avais oublié cette appli ! ;) Bien ouej"]
         for it in xrange(30):
-            json = {'user': {'screen_name': random.choice(usernames)}, 'text': random.choice(texts)}
+            json = {
+                'user': {'screen_name': random.choice(usernames)},
+                'text': random.choice(texts),
+                'created_at': "Wed May 26 20:35:12 +0000 2010"
+            }
             results.append(tweepy.Status.parse(None, json))
         return results
-
-        return 

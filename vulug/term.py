@@ -3,7 +3,7 @@
 
 import curses
 
-class Curses(object):
+class Term(object):
 
     def __init__(self, screen, config):
         curses.use_default_colors()
